@@ -2,27 +2,16 @@
 # https://circleci.com/docs/2.0/language-ruby/
 
 version: 2.1
-
 executors:
-  project_container:
-
-
-jobs:
-  test:
-    parallelism: 1
-    working_directory: ~/repo
+  setup_rails_environment:
     docker:
       - image: circleci/ruby:2.5.1-node-browsers
         environment:
           BUNDLER_VERSION: 2.0.1
           RAILS_ENV: test
-      # - image: circleci/postgres:9.4
+commands:
+  bundle_install:
     steps:
-      # checkout codebase from github
-      - checkout
-
-      - run: gem update bundler
-      # store bundler cache
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "Gemfile.lock" }}
@@ -33,25 +22,16 @@ jobs:
           paths:
             - ./vendor/bundle
           key: v1-dependencies-{{ checksum "Gemfile.lock" }}
-
-      # store yarn / webpacker cache
-      # - restore_cache:
-      #     keys:
-      #       - rails-demo-yarn-{{ checksum "yarn.lock" }}
-      #       - rails-demo-yarn-
-      # - run:
-      #     name: Yarn Install
-      #     command: yarn install --cache-folder ~/.cache/yarn
-      # - save_cache:
-      #     key: rails-demo-yarn-{{ checksum "yarn.lock" }}
-      #     paths:
-      #       - ~/.cache/yarn
-
-      # setup db
-      # - run: dockerize -wait tcp://localhost:5432 -timeout 1m # wait for db container
-      # - run: bundle exec rake db:create
-      # - run: bundle exec rake db:schema:load
-
+jobs:
+  test:
+    parallelism: 1
+    working_directory: ~/repo
+    executor: setup_rails_environment
+    steps:
+      # checkout codebase from github
+      - checkout
+      - run: gem update bundler
+      - bundle_install
       - run:
           name: run tests
           command: |
@@ -60,11 +40,8 @@ jobs:
             echo $TEST_FILES
 
             bundle exec rake test $TEST_FILES
-
-      # collect reports
       - store_test_results:
           path: /tmp/test-results
-
 workflows:
   version: 2.1
   test_suite:
