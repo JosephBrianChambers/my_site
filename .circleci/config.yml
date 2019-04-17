@@ -3,15 +3,17 @@
 
 version: 2.1
 executors:
-  setup_rails_environment:
+  init_docker_container:
     docker:
       - image: circleci/ruby:2.5.1-node-browsers
         environment:
           BUNDLER_VERSION: 2.0.1
           RAILS_ENV: test
 commands:
-  bundle_install:
+  setup_rails_environment:
     steps:
+      - checkout
+      - run: gem update bundler
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "Gemfile.lock" }}
@@ -26,11 +28,9 @@ jobs:
   test:
     parallelism: 1
     working_directory: ~/repo
-    executor: setup_rails_environment
+    executor: init_docker_container
     steps:
-      - checkout
-      - run: gem update bundler
-      - bundle_install
+      - setup_rails_environment
       - run:
           name: run tests
           command: |
@@ -43,11 +43,12 @@ jobs:
           path: /tmp/test-results
   deploy:
     working_directory: ~/repo
-    executor: setup_rails_environment
+    executor: init_docker_container
     steps:
-      - checkout
-      - run: gem update bundler
-      - bundle_install
+      - setup_rails_environment
+      - add_ssh_keys:
+          fingerprints:
+            - "53:bb:ea:4d:f1:f0:b3:c3:40:ec:1c:54:22:9c:23:7d"
       - run:
           command: |
             bundle exec cap production deploy
