@@ -16,7 +16,7 @@ commands:
           keys:
             - v1-dependencies-{{ checksum "Gemfile.lock" }}
       - run:
-          name: install dependencies
+          name: install gem dependencies
           command: bundle install --jobs=4 --retry=3 --path vendor/bundle
       - save_cache:
           paths:
@@ -28,7 +28,6 @@ jobs:
     working_directory: ~/repo
     executor: setup_rails_environment
     steps:
-      # checkout codebase from github
       - checkout
       - run: gem update bundler
       - bundle_install
@@ -42,8 +41,27 @@ jobs:
             bundle exec rake test $TEST_FILES
       - store_test_results:
           path: /tmp/test-results
+  deploy:
+    working_directory: ~/repo
+    executor: setup_rails_environment
+    steps:
+      - checkout
+      - run: gem update bundler
+      - bundle_install
+      - run:
+          command: |
+            bundle exec cap production deploy
+      - store_artifacts:
+          path: log/capistrano.log
+
 workflows:
   version: 2.1
   test_suite:
     jobs:
       - test
+      - deploy:
+          requires:
+            - test
+          # filters:
+          #   branches:
+          #     only: /^master$/
